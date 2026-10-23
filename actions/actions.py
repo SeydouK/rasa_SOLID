@@ -4,6 +4,8 @@ from datetime import datetime
 import unicodedata
 from rasa_sdk.events import SlotSet 
 
+from .llm import reformuler
+
 from typing import Any, Text, Dict, List 
 
 from rasa_sdk import Action, FormValidationAction, Tracker 
@@ -80,10 +82,9 @@ class ValidateSuiviForm(FormValidationAction):
         if nom in NAVIRES:
             return {"navire": nom}
         liste = "\n".join(f"- {n.capitalize()}" for n in NAVIRES)
-        dispatcher.utter(
-            text="Je ne trouve pas ce navire. Pour la démo, essayez :"
-                f"Voici nos navires :\n" + liste
-        )
+        dispatcher.utter_message(
+                    text="Je ne trouve pas ce navire. Pour la démo, essayez :\n" + liste
+                    )
         return {"navire": None}
     
 class ActionSuiviNavire(Action):
@@ -231,7 +232,7 @@ class ActionRagDocs(Action):
 
     def run(self, dispatcher, tracker, domain):
         question = tracker.latest_message.get("text", "")
-        resultats = MOTEUR.chercher(question)
+        resultats = MOTEUR.chercher(question, k=3)
 
         if not resultats:
             dispatcher.utter_message(
@@ -239,9 +240,15 @@ class ActionRagDocs(Action):
                      "Vous pouvez reformuler ou demander un rendez-vous.")
             return []
 
-        morceaux = "\n\n".join(f"{texte}\n(Source : {fichier})"
-                                for (fichier, texte), _ in resultats)
-        
-        dispatcher.utter_message(text="D'après la documentation :\n\n" + morceaux)
+        passages = [texte for (_, texte), _ in resultats]
+        reponse = reformuler(question, passages)
+
+        if reponse:
+            sources = ", ".join(sorted({source for (source, _), _ in resultats}))
+            dispatcher.utter_message(text=f"{reponse}\n\nSource : {sources}")
+        else:
+            morceaux = "\n\n".join(f"{texte}\n(Source : {fichier})"
+                                   for (fichier, texte), _ in resultats)
+            dispatcher.utter_message(text="D'après la documentation :\n\n" + morceaux)
         return []
         

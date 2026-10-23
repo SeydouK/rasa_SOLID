@@ -1,26 +1,28 @@
+import hashlib
+import os
 import re
-import unicodedata
 from pathlib import Path
 
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
+from sentence_transformers import SentenceTransformer
 
 DOCS_DIR = Path(__file__).resolve().parent.parent / "docs"
-SEUIL = 0.15
-STOP = ["le", "la", "les", "de", "du", "des", "un", "une", "et", "en", "au", "aux",
-        "que", "qui", "quoi", "est", "sont", "pour", "dans", "sur", "par", "ce", "ces",
-        "quel", "quelle", "quels", "quelles", "dit", "vos", "votre", "il", "y", "a"]
+CACHE_DIR = Path(__file__).resolve().parent.parent / ".rag_cache"
 
+MODELE = os.getenv("RAG_MODEL", "intfloat/multilingual-e5-small")
 
-def _norm(t: str) -> str:
-    t = unicodedata.normalize("NFD", t.lower())
-    return "".join(c for c in t if unicodedata.category(c) != "Mn")
+SEUIL = float(os.getenv("RAG_SEUIL", "0.80"))
 
 
 class MoteurDocs:
     def __init__(self):
-        self.morceaux = []   # (source, texte)
+        self.morceaux = []   
+        self._decouper()
 
+        self.modele = SentenceTransformer(MODELE)
+        self.matrice = self._charger_ou_calculer_embeddings()
+
+    def _decouper(self):
         for f in sorted(DOCS_DIR.glob("*")):
             if f.suffix.lower() not in (".txt", ".md"):
                 continue
@@ -39,27 +41,44 @@ class MoteurDocs:
                     if ph:
                         phrases_buffer.append((page, ph))
 
-            # fenêtres de 5 phrases, avec un pas de 3 (chevauchement de 2)
             for i in range(0, len(phrases_buffer), 3):
                 fenetre = phrases_buffer[i:i + 5]
                 texte_chunk = " ".join(p for _, p in fenetre)
                 if len(texte_chunk) > 60:
                     self.morceaux.append((f"{f.name}, p.{fenetre[0][0]}", texte_chunk))
 
-        self.vec = TfidfVectorizer(
-            preprocessor=_norm,
-            stop_words=[_norm(s) for s in STOP],
-            ngram_range=(1, 2),
-        )
-        if self.morceaux:
-            self.matrice = self.vec.fit_transform([t for _, t in self.morceaux])
+    def _empreinte(self) -> str:
+        h = hashlib.sha256(MODELE.encode())
+        for _, t in self.morceaux:
+            h.update(t.encode())
+        return h.hexdigest()[:16]
+
+    def _charger_ou_calculer_embeddings(self) -> np.ndarray:
+        if not self.morceaux:
+            return np.empty((0, 0), dtype=np.float32)
+
+        CACHE_DIR.mkdir(exist_ok=True)
+        fichier = CACHE_DIR / f"emb_{self._empreinte()}.npy"
+        if fichier.exists():
+            return np.load(fichier)
+
+        emb = self.modele.encode(
+            ["passage: " + t for _, t in self.morceaux],
+            normalize_embeddings=True, batch_size=32, show_progress_bar=False,
+        ).astype(np.float32)
+        np.save(fichier, emb)
+        return emb
 
     def chercher(self, question: str, k: int = 2):
         if not self.morceaux:
             return []
-        scores = cosine_similarity(self.vec.transform([question]), self.matrice)[0]
+        
+        q = self.modele.encode(
+            ["query: " + question], normalize_embeddings=True
+        ).astype(np.float32)[0]
+        scores = self.matrice @ q          
         ordre = scores.argsort()[::-1][:k]
-        return [(self.morceaux[i], scores[i]) for i in ordre if scores[i] >= SEUIL]
+        return [(self.morceaux[i], float(scores[i])) for i in ordre if scores[i] >= SEUIL]
 
 
 MOTEUR = MoteurDocs()
