@@ -1,0 +1,158 @@
+version: "3.1"
+
+intents: 
+  - greet
+  - goodbye 
+  - thank
+  - ask_horaires
+  - inform_jour
+  - ask_contact 
+  - ask_visite_virtuelle 
+  - bot_challenge
+  - ask_services 
+  - request_rdv
+  - stop
+  - ask_presentation
+  - ask_documents
+  - ask_documentation
+  - ask_localisation
+  - request_suivi_navire
+  - ask_recrutement
+
+entities:
+  - jour
+  - service
+
+slots:
+  jour:
+    type: text
+    mappings:
+    - type: from_entity
+      entity: jour
+  
+  nom: 
+    type: text
+    influence_conversation: false
+    mappings:
+    - type: from_text
+      conditions: 
+      - active_loop: rdv_form 
+        requested_slot: nom
+  
+  email:
+    type: text
+    influence_conversation: false
+    mappings:
+    - type: from_text
+      conditions: 
+      - active_loop: rdv_form
+        requested_slot: email
+    
+  motif:
+    type: text
+    influence_conversation: false
+    mappings:
+    - type: from_text
+      conditions:
+      - active_loop: rdv_form
+        requested_slot: motif
+
+  service:
+    type: text
+    influence_conversation: false
+    mappings: 
+    - type: from_entity
+      entity: service
+  
+  navire: 
+    type: text
+    influence_conversation: false
+    mappings: 
+    - type: from_text
+      conditions:
+      - active_loop: suivi_form
+        requested_slot: navire
+
+forms: 
+  suivi_form:
+    required_slots:
+      - navire
+  rdv_form:
+    required_slots:
+      - nom
+      - email
+      - motif
+
+actions:
+  - action_donner_horaires
+  - action_enregistrer_rdv
+  - action_reset_rdv_slots
+  - action_info_service
+  - validate_suivi_form
+  - action_suivi_navire
+  - action_reset_suivi
+  - action_rag_docs  
+
+responses: 
+  utter_ask_nom:
+    - text: "Quel est votre nom complet ?"
+
+  utter_ask_email: 
+    - text: "Quelle est votre adresse email ?"
+
+  utter_ask_motif: 
+    - text: "Quel est le motif de votre demande ?"
+
+  utter_submit_rdv: 
+    - text: "Merci {nom} ! Votre demande est enregistrée, ous vous répondrons à {email}."
+
+  utter_rdv_annule: 
+    - text: "D'accord, j'annule la demande. Autre chose ?"
+    
+  utter_greet: 
+    - text: "Bonjour ! Je suis l'assistant virtuel du PAD. Comment puis-je aider ?"
+
+  utter_goodbye: 
+    - text: "Au revoir et à bientôt !"
+    - text: "Merci de votre visite; bonne journée !"
+
+  utter_thank: 
+    - text: "Avec plaisir ! Autre chose ?" 
+  
+  utter_contact:
+    - text: "Vous pouvez nous joindre au +225 00 00 00 00 ou par email : contact@exemple.ci"
+
+  utter_visite_virtuelle:
+    - text: "La visite virtuelle 360 est accessible depuisl la page d'acceuril du portail."
+
+  utter_iamabot:
+    - text: "Je suis un assistant virtuel, pas un humain."
+  
+  utter_please_rephrase:
+    - text: "Je n'ai pas bien compris. Pouvez-vous reformuler ?"
+
+  utter_presentation:
+    - text: "Le PAD (Port Autonome d'Abidjan) est la porte d'entrée maritime de la Côte d'Ivoire. Il accueille les navires, gère les opérations portuaires et assure le transit des marchandises pour le pays et la sous-région."
+
+  utter_documents:
+    - text: |
+        Documents généralement demandés (à confirmer auprès du guichet) :
+        - Import : connaissement, facture commerciale, liste de colisage, déclaration en douane
+        - Export : facture commerciale, liste de colisage, déclaration d'exportation, certificat d'origine si requis
+        Pour votre cas précis, utilisez le formulaire de rendez-vous.
+        
+  utter_localisation:
+    - text: "Le port est situé à Abidjan. Adresse exacte : 21, boulevard de la Libération, Boîte Postale 3195, Dakar, Sénégal."
+
+  utter_recrutement:
+    - text: "Les offres d'emploi et de stage sont publiées dans la rubrique Recrutement du portail. Vous pouvez aussi envoyer votre candidature à [email RH à compléter]."  
+
+  utter_ask_navire:
+    - text: "Quel est le nom du navire à suivre ?"
+
+  utter_suivi_annule:
+    - text: "D'accord, j'annule le suivi. Autre chose ?"
+
+session_config:
+  session_expiration_time: 60 
+  carry_over_slots_to_new_session: true

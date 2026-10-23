@@ -1,0 +1,132 @@
+version: "3.1"
+
+rules:
+- rule: Dire bonjour
+  steps:
+  - intent: greet
+  - action: utter_greet
+
+- rule: Dire au revoir
+  steps:
+  - intent: goodbye
+  - action: utter_goodbye
+
+- rule: Répondre aux remerciements
+  steps:
+  - intent: thank
+  - action: utter_thank
+
+- rule: Donner les horaires
+  steps:
+  - intent: ask_horaires
+  - action: action_donner_horaires
+
+- rule: Donner le contact
+  steps:
+  - intent: ask_contact
+  - action: utter_contact
+
+- rule: Expliquer la visite virtuelle
+  steps:
+  - intent: ask_visite_virtuelle
+  - action: utter_visite_virtuelle
+
+- rule: Répondre au challenge bot
+  steps:
+  - intent: bot_challenge
+  - action: utter_iamabot
+
+- rule: Demander de reformuler si incompréhension
+  steps:
+  - intent: nlu_fallback
+  - action: utter_please_rephrase
+  
+- rule: Activer le formulaire de rendez-vous
+  steps:
+  - intent: request_rdv
+  - action: rdv_form
+  - active_loop: rdv_form
+
+- rule: Informations sur les services
+  steps:
+  - intent: ask_services
+  - action: action_info_service
+
+- rule: Présentation du PAD
+  steps:
+  - intent: ask_presentation
+  - action: utter_presentation
+
+- rule: Documents
+  steps:
+  - intent: ask_documents
+  - action: utter_documents
+
+- rule: Localisation
+  steps:
+  - intent: ask_localisation
+  - action: utter_localisation
+
+- rule: Recrutement
+  steps:
+  - intent: ask_recrutement
+  - action: utter_recrutement
+
+- rule: Activer le suivi de navire
+  steps:
+  - intent: request_suivi_navire
+  - action: suivi_form
+  - active_loop: suivi_form
+
+- rule: Recherche dans la documentation
+  steps:
+  - intent: ask_documentation
+  - action: action_rag_docs
+
+- rule: Terminer le suivi de navire
+  condition:
+  - active_loop: suivi_form
+  steps:
+  - action: suivi_form
+  - active_loop: null
+  - slot_was_set:
+    - requested_slot: null
+  - action: action_suivi_navire
+  - action: action_reset_suivi
+
+- rule: Annuler le suivi de navire
+  condition:
+  - active_loop: suivi_form
+  steps:
+  - intent: stop
+  - action: action_deactivate_loop
+  - active_loop: null
+  - slot_was_set:
+    - requested_slot: null
+  - action: utter_suivi_annule
+  - action: action_reset_suivi
+
+- rule: Soumettre le formulaire de rendez-vous
+  condition:
+  - active_loop: rdv_form
+  steps:
+  - action: rdv_form
+  - active_loop: null
+  - slot_was_set:
+    - requested_slot: null
+  - action: action_enregistrer_rdv
+  - action: utter_submit_rdv
+  - action: action_reset_rdv_slots
+
+- rule: Annuler le formulaire de rendez-vous
+  condition:
+  - active_loop: rdv_form
+  steps:
+  - intent: stop
+  - action: action_deactivate_loop
+  - active_loop: null
+  - slot_was_set:
+    - requested_slot: null
+  - action: utter_rdv_annule
+  - action: action_reset_rdv_slots
+

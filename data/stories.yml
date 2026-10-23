@@ -1,0 +1,17 @@
+version: "3.1"
+
+stories:
+- story: Horaires puis autre jour
+  steps:
+  - intent: ask_horaires
+    entities:
+    - jour: samedi
+  - slot_was_set:
+    - jour: samedi
+  - action: action_donner_horaires
+  - intent: inform_jour
+    entities:
+    - jour: lundi
+  - slot_was_set:
+    - jour: lundi
+  - action: action_donner_horaires
